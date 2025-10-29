@@ -4,11 +4,12 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.core.security import get_current_user
 from app.database.models.user import User
+from app.schemas.progress import ProgressOut
 from app.services.progress import track_progress_service
 
 router = APIRouter(prefix="/progress/module", tags=["Progress"])
 
-@router.post("/{module_id}/track")
+@router.post("/{module_id}/track", response_model=ProgressOut)
 def track_progress(
     module_id: str,
     db: Session = Depends(get_db),

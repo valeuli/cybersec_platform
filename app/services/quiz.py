@@ -1,6 +1,7 @@
 from datetime import datetime
-from fastapi import HTTPException
+from uuid import UUID
 from sqlalchemy.orm import Session
+from fastapi import HTTPException
 
 from app.database.models import Question, Answer, Exam, UserExamAnswer
 from app.database.models.user_exam_result import UserExamResult
@@ -18,7 +19,7 @@ def start_quiz_attempt(db: Session, current_user: User):
         exam_id=exam.id,
         total_score=None,
         level_assigned=None,
-        taken_at=datetime.utcnow(),
+        taken_at=datetime.now(),
     )
     db.add(attempt)
     db.commit()
@@ -48,20 +49,28 @@ def get_question(db: Session, attempt_id: str, index: int, current_user: User):
     }
 
 
-def submit_answer(db: Session, attempt_id: str, answer_id: str, current_user: User):
-    answer = db.query(Answer).filter(Answer.id == answer_id).first()
+def submit_answer(db: Session, attempt_id, answer_id):
+    try:
+        attempt_uuid = attempt_id if isinstance(attempt_id, UUID) else UUID(str(attempt_id))
+        answer_uuid = answer_id if isinstance(answer_id, UUID) else UUID(str(answer_id))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID inválido")
+
+    answer = db.query(Answer).filter(Answer.id == answer_uuid).first()
     if not answer:
         raise HTTPException(status_code=404, detail="Respuesta no encontrada.")
 
     record = UserExamAnswer(
-        result_id=attempt_id,
+        result_id=attempt_uuid,
         question_id=answer.question_id,
         answer_id=answer.id,
-        is_correct=answer.is_correct,
-        created_at=datetime.utcnow(),
+        is_correct=bool(answer.is_correct),
+        created_at=datetime.now(),
     )
+
     db.add(record)
     db.commit()
+
     return {"message": "Respuesta guardada exitosamente."}
 
 
@@ -107,13 +116,13 @@ def calculate_level_progression(db: Session, attempt_id: str):
     total_score = score_basic + score_intermediate + score_advanced
 
     if total_score >= 95:
-        level = "avanzado"
+        level = "advanced"
     elif total_score >= 70:
-        level = "intermedio"
+        level = "intermediate"
     elif total_score >= 20:
-        level = "básico"
+        level = "basic"
     else:
-        level = "inicial"
+        level = "initial"
 
     return {
         "score_basic": score_basic,

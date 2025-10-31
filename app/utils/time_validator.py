@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 
 def validate_attempt_time(start_time: datetime, limit_minutes: int = 30):
-    now = datetime.utcnow()
+    now = datetime.now()
     elapsed = now - start_time
     if elapsed > timedelta(minutes=limit_minutes):
         raise HTTPException(

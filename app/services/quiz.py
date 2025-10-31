@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.models import Question, Answer, Exam, UserExamAnswer
 from app.database.models.user_exam_result import UserExamResult
 from app.database.models.user import User
+from app.utils.time_validator import validate_attempt_time
 
 
 def start_quiz_attempt(db: Session, current_user: User):
@@ -72,28 +73,52 @@ def finish_quiz(db: Session, attempt_id: str, current_user: User):
     if not attempt:
         raise HTTPException(status_code=404, detail="Intento no encontrado.")
 
-    answers = db.query(UserExamAnswer).filter(UserExamAnswer.result_id == attempt_id).all()
-    total_correct = sum(1 for a in answers if a.is_correct)
-    total_questions = db.query(Question).count()
+    validate_attempt_time(attempt.taken_at)
 
-    if total_questions == 0:
-        raise HTTPException(status_code=400, detail="No hay preguntas en el examen.")
-
-    score = round((total_correct / total_questions) * 100, 2)
-    if score < 50:
-        level = "básico"
-    elif score < 80:
-        level = "intermedio"
-    else:
-        level = "avanzado"
-
-    attempt.total_score = score
-    attempt.level_assigned = level
+    result_data = calculate_level_progression(db, attempt_id)
+    attempt.total_score = result_data["total_score"]
+    attempt.level_assigned = result_data["level_assigned"]
     db.commit()
 
+    return {"message": "Examen finalizado.", **result_data}
+
+def calculate_level_progression(db: Session, attempt_id: str):
+    answers = db.query(UserExamAnswer).filter(UserExamAnswer.result_id == attempt_id).all()
+    if not answers:
+        raise HTTPException(status_code=400, detail="No hay respuestas registradas para este intento.")
+
+    question_ids = [a.question_id for a in answers]
+    questions = db.query(Question).filter(Question.id.in_(question_ids)).all()
+
+    correct_by_level = {"basic": 0, "intermediate": 0, "advanced": 0}
+    total_by_level = {"basic": 0, "intermediate": 0, "advanced": 0}
+
+    for q in questions:
+        level = q.level
+        total_by_level[level] += 1
+        related_answer = next((a for a in answers if a.question_id == q.id), None)
+        if related_answer and related_answer.is_correct:
+            correct_by_level[level] += 1
+
+    score_basic = round((correct_by_level["basic"] / total_by_level["basic"]) * 20, 2) if total_by_level["basic"] else 0
+    score_intermediate = round((correct_by_level["intermediate"] / total_by_level["intermediate"]) * 50, 2) if total_by_level["intermediate"] else 0
+    score_advanced = round((correct_by_level["advanced"] / total_by_level["advanced"]) * 30, 2) if total_by_level["advanced"] else 0
+
+    total_score = score_basic + score_intermediate + score_advanced
+
+    if total_score >= 95:
+        level = "avanzado"
+    elif total_score >= 70:
+        level = "intermedio"
+    elif total_score >= 20:
+        level = "básico"
+    else:
+        level = "inicial"
+
     return {
-        "message": "Examen finalizado.",
-        "total_correct": total_correct,
-        "score": score,
+        "score_basic": score_basic,
+        "score_intermediate": score_intermediate,
+        "score_advanced": score_advanced,
+        "total_score": total_score,
         "level_assigned": level,
     }

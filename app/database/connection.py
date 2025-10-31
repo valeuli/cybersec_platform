@@ -28,6 +28,6 @@ def get_db():
 def test_connection():
     try:
         with engine.connect() as conn:
-            print("✅ Conexión exitosa a la base de datos")
+            print("Conexión exitosa a la base de datos")
     except SQLAlchemyError as e:
-        print(f"❌ Error de conexión: {e}")
+        print(f"Error de conexión: {e}")

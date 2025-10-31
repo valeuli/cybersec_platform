@@ -1,9 +1,16 @@
+from uuid import UUID
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.database.models.lesson import Lesson
 
 def get_lesson_service(lesson_id: str, db: Session):
-    lesson = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    try:
+        lesson_uuid = UUID(lesson_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID inválido")
+
+    lesson = db.query(Lesson).filter(Lesson.id == lesson_uuid).first()
     if not lesson:
         raise HTTPException(status_code=404, detail="Módulo no encontrado")
 

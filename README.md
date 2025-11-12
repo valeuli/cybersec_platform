@@ -3,10 +3,10 @@
 Plataforma desarrollada como proyecto de semillero universitario para capacitar a pequeñas empresas en ciberseguridad, mediante módulos interactivos y evaluaciones adaptativas por niveles.
 
 Incluye:
-	•	Registro e inicio de sesión con autenticación JWT.
-	•	Módulos de aprendizaje (video o texto).
-	•	Seguimiento de progreso por usuario.
-	•	Examen único con clasificación automática (básico, intermedio, avanzado).
+- Registro e inicio de sesión con autenticación JWT.
+- Módulos de aprendizaje (video o texto).
+- Seguimiento de progreso por usuario.
+- Examen único con clasificación automática (básico, intermedio, avanzado).
 
 ⸻
 
@@ -44,10 +44,10 @@ Abrir en el navegador: http://localhost:8000/docs
 University research project designed to train small businesses in cybersecurity best practices using modular learning and adaptive assessments.
 
 Features:
-	•	User registration & login (JWT-based).
-	•	Learning modules (video or text).
-	•	User progress tracking.
-	•	Single adaptive exam (basic/intermediate/advanced).
+- User registration & login (JWT-based).
+- Learning modules (video or text).
+- User progress tracking.
+- Single adaptive exam (basic/intermediate/advanced).
 ⸻
 
 ## 🚀 Run locally

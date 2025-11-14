@@ -1,18 +1,5 @@
-import pytest
-from fastapi.testclient import TestClient
 from app.database.models.user import User
 from app.core.security import verify_password
-
-@pytest.fixture
-def register_user(client: TestClient):
-    payload = {
-        "first_name": "Juliana",
-        "last_name": "Ramírez",
-        "email": "juliana@example.com",
-        "password": "supersegura123"
-    }
-    response = client.post("/auth/register", json=payload)
-    return response
 
 
 def test_register_user_success(client, db_session):

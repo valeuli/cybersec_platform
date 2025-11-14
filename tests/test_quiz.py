@@ -1,6 +1,6 @@
 import uuid
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from app.services.quiz import (
     start_quiz_attempt,
@@ -11,50 +11,6 @@ from app.services.quiz import (
 )
 from app.utils.time_validator import validate_attempt_time
 from app.database.models import Exam, Question, Answer, UserExamResult, UserExamAnswer
-from app.database.models.user import User
-
-@pytest.fixture
-def sample_user(db_session):
-    unique = uuid.uuid4().hex[:8]
-    user = User(
-        first_name="Test",
-        last_name="User",
-        email=f"test_{unique}@example.com",
-        password_hash="hashed",
-    )
-    db_session.add(user)
-    db_session.commit()
-    return user
-
-@pytest.fixture
-def active_exam(db_session):
-    exam = Exam(title="Examen general", description="Prueba activa", is_active=True)
-    db_session.add(exam)
-    db_session.commit()
-    return exam
-
-@pytest.fixture
-def inactive_exam(db_session):
-    exam = Exam(title="Inactivo", description="No disponible", is_active=False)
-    db_session.add(exam)
-    db_session.commit()
-    return exam
-
-@pytest.fixture
-def basic_question_set(db_session):
-    q1 = Question(question_text="¿Qué es ciberseguridad?", level="basic")
-    q2 = Question(question_text="¿Qué es un malware?", level="basic")
-    db_session.add_all([q1, q2])
-    db_session.commit()
-
-    a1 = Answer(question_id=q1.id, answer_text="Protección de sistemas", is_correct=True)
-    a2 = Answer(question_id=q1.id, answer_text="Ataque informático", is_correct=False)
-    a3 = Answer(question_id=q2.id, answer_text="Software malicioso", is_correct=True)
-    a4 = Answer(question_id=q2.id, answer_text="Antivirus", is_correct=False)
-    db_session.add_all([a1, a2, a3, a4])
-    db_session.commit()
-
-    return [q1, q2]
 
 
 def test_start_quiz_attempt_success(db_session, sample_user, active_exam):
@@ -70,7 +26,7 @@ def test_start_quiz_attempt_no_active_exam(db_session, sample_user, inactive_exa
     assert exc.value.status_code == 404
 
 def test_get_question_success(db_session, sample_user, active_exam, basic_question_set):
-    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now())
+    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now(timezone.utc))
     db_session.add(attempt)
     db_session.commit()
 
@@ -80,7 +36,7 @@ def test_get_question_success(db_session, sample_user, active_exam, basic_questi
     assert res["index"] == 1
 
 def test_get_question_index_out_of_range(db_session, sample_user, active_exam, basic_question_set):
-    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now())
+    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now(timezone.utc))
     db_session.add(attempt)
     db_session.commit()
     with pytest.raises(HTTPException) as exc:
@@ -88,7 +44,7 @@ def test_get_question_index_out_of_range(db_session, sample_user, active_exam, b
     assert exc.value.status_code == 400
 
 def test_submit_answer_success(db_session, sample_user, active_exam, basic_question_set):
-    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now())
+    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now(timezone.utc))
     db_session.add(attempt)
     db_session.commit()
     answer = db_session.query(Answer).first()
@@ -97,7 +53,7 @@ def test_submit_answer_success(db_session, sample_user, active_exam, basic_quest
     assert res["message"] == "Respuesta guardada exitosamente."
 
 def test_submit_answer_invalid_id(db_session, sample_user, active_exam):
-    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now())
+    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now(timezone.utc))
     db_session.add(attempt)
     db_session.commit()
     with pytest.raises(HTTPException) as exc:
@@ -105,7 +61,7 @@ def test_submit_answer_invalid_id(db_session, sample_user, active_exam):
     assert exc.value.status_code == 400
 
 def test_submit_answer_not_found(db_session, sample_user, active_exam):
-    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now())
+    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now(timezone.utc))
     db_session.add(attempt)
     db_session.commit()
     with pytest.raises(HTTPException) as exc:
@@ -113,7 +69,7 @@ def test_submit_answer_not_found(db_session, sample_user, active_exam):
     assert exc.value.status_code == 404
 
 def test_calculate_level_progression_correct_scores(db_session, sample_user, active_exam, basic_question_set):
-    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now())
+    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now(timezone.utc))
     db_session.add(attempt)
     db_session.commit()
     answers = [
@@ -128,7 +84,7 @@ def test_calculate_level_progression_correct_scores(db_session, sample_user, act
     assert res["level_assigned"] in ["basic", "intermediate", "advanced"]
 
 def test_finish_quiz_success(db_session, sample_user, active_exam, basic_question_set):
-    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now())
+    attempt = UserExamResult(user_id=sample_user.id, exam_id=active_exam.id, taken_at=datetime.now(timezone.utc))
     db_session.add(attempt)
     db_session.commit()
 

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 class UserBase(BaseModel):
     first_name: str = Field(..., max_length=50)
@@ -15,13 +15,13 @@ class UserLogin(BaseModel):
     password: str
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     first_name: str
     last_name: str
     email: EmailStr
 
-    class Config:
-        from_attributes = True  # para SQLAlchemy 2.x
 
 class Token(BaseModel):
     access_token: str

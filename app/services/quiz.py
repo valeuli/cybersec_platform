@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -19,7 +19,7 @@ def start_quiz_attempt(db: Session, current_user: User):
         exam_id=exam.id,
         total_score=None,
         level_assigned=None,
-        taken_at=datetime.now(),
+        taken_at=datetime.now(timezone.utc),
     )
     db.add(attempt)
     db.commit()
@@ -34,6 +34,8 @@ def get_question(db: Session, attempt_id: str, index: int, current_user: User):
     ).first()
     if not attempt:
         raise HTTPException(status_code=404, detail="Intento no encontrado.")
+
+    validate_attempt_time(attempt.taken_at)
 
     questions = db.query(Question).filter(Question.is_active == True).order_by(Question.created_at).all()
     if index < 1 or index > len(questions):
@@ -51,10 +53,16 @@ def get_question(db: Session, attempt_id: str, index: int, current_user: User):
 
 def submit_answer(db: Session, attempt_id, answer_id):
     try:
-        attempt_uuid = attempt_id if isinstance(attempt_id, UUID) else UUID(str(attempt_id))
-        answer_uuid = answer_id if isinstance(answer_id, UUID) else UUID(str(answer_id))
+        attempt_uuid = UUID(str(attempt_id))
+        answer_uuid = UUID(str(answer_id))
     except ValueError:
         raise HTTPException(status_code=400, detail="ID inválido")
+
+    attempt = db.query(UserExamResult).filter(UserExamResult.id == attempt_uuid).first()
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Intento no encontrado.")
+
+    validate_attempt_time(attempt.taken_at)
 
     answer = db.query(Answer).filter(Answer.id == answer_uuid).first()
     if not answer:
@@ -65,12 +73,11 @@ def submit_answer(db: Session, attempt_id, answer_id):
         question_id=answer.question_id,
         answer_id=answer.id,
         is_correct=bool(answer.is_correct),
-        created_at=datetime.now(),
+        created_at=datetime.now(timezone.utc),
     )
 
     db.add(record)
     db.commit()
-
     return {"message": "Respuesta guardada exitosamente."}
 
 
@@ -131,3 +138,16 @@ def calculate_level_progression(db: Session, attempt_id: str):
         "total_score": total_score,
         "level_assigned": level,
     }
+
+def get_user_level(db: Session, current_user: User):
+    last_result = (
+        db.query(UserExamResult)
+        .filter(UserExamResult.user_id == current_user.id)
+        .order_by(UserExamResult.taken_at.desc())
+        .first()
+    )
+
+    if not last_result or not last_result.level_assigned:
+        return {"level": "basic"}
+
+    return {"level": last_result.level_assigned}

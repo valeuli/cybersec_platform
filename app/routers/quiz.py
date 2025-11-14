@@ -9,6 +9,7 @@ from app.services.quiz import (
     get_question,
     submit_answer,
     finish_quiz,
+    get_user_level,
 )
 
 router = APIRouter(prefix="/quiz", tags=["Quiz"])
@@ -28,3 +29,10 @@ def submit_quiz_answer(attempt_id: str, data: dict, db: Session = Depends(get_db
 @router.post("/attempts/{attempt_id}/finish", response_model=QuizResultOut)
 def finish_quiz_attempt(attempt_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return finish_quiz(db, attempt_id, current_user)
+
+@router.get("/level")
+def get_user_level_endpoint(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_user_level(db, current_user)

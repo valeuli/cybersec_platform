@@ -16,7 +16,7 @@ class Course(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     __table_args__ = (
-        CheckConstraint("level IN ('básico', 'intermedio', 'avanzado')", name="check_course_level"),
+        CheckConstraint("level IN ('basic', 'intermediate', 'advanced')", name="check_course_level"),
     )
 
     lessons = relationship("Lesson", back_populates="course", cascade="all, delete-orphan")

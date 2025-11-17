@@ -15,6 +15,6 @@ class LessonOut(BaseModel):
 class UserLessonsOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    level: Literal["inicial", "básico", "intermedio", "avanzado"]
+    level: Literal["basic", "intermediate", "advanced"]
     next_lesson_id: Optional[UUID4]
     lessons: List[LessonOut]

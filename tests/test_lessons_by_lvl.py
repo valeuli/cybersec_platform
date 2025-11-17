@@ -16,7 +16,7 @@ def test_get_lessons_basic_level(db_session, sample_user, course_and_lessons, ac
 
     result = get_lessons_by_level(db_session, sample_user)
     assert result["level"] == "basic"
-    assert len(result["lessons"]) == 5
+    assert len(result["lessons"]) == 3
     assert result["lessons"][0]["title"].startswith("Basic")
     assert result["next_lesson_id"] == result["lessons"][0]["id"]
 
@@ -36,7 +36,7 @@ def test_get_lessons_intermediate_level(db_session, sample_user, course_and_less
     print(result)
 
     assert result["level"] == "intermediate"
-    assert len(result["lessons"]) == 5
+    assert len(result["lessons"]) == 3
     assert result["lessons"][0]["order_in_course"] == 6
 
 
@@ -58,7 +58,7 @@ def test_next_lesson_respects_progress(db_session, sample_user, course_and_lesso
 
     result = get_lessons_by_level(db_session, sample_user)
 
-    assert result["next_lesson_id"] == result["lessons"][1]["id"]
+    assert result["next_lesson_id"] == result["lessons"][0]["id"]
 
 
 def test_all_lessons_completed(db_session, sample_user, course_and_lessons, active_exam):
@@ -81,4 +81,4 @@ def test_all_lessons_completed(db_session, sample_user, course_and_lessons, acti
     result = get_lessons_by_level(db_session, sample_user)
 
     assert result["next_lesson_id"] is None
-    assert len(result["lessons"]) == 5
+    assert len(result["lessons"]) == 3

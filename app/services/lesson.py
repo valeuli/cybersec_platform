@@ -56,6 +56,13 @@ def get_lessons_by_level(db: Session, current_user: User):
     seen_ids = {str(p.lesson_id) for p in progress}
     next_lesson = next((l for l in lessons if str(l.id) not in seen_ids), None)
 
+    if next_lesson:
+        start_index = lessons.index(next_lesson)
+    else:
+        start_index = 0
+
+    lessons_to_show = lessons[start_index:start_index + 3]
+
     return {
         "level": user_level,
         "next_lesson_id": str(next_lesson.id) if next_lesson else None,
@@ -68,6 +75,6 @@ def get_lessons_by_level(db: Session, current_user: User):
                 "text_content": l.text_content,
                 "order_in_course": l.order_in_course
             }
-            for l in lessons
+            for l in lessons_to_show
         ]
     }

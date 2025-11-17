@@ -8,13 +8,13 @@ from app.services.progress import track_progress_service
 
 router = APIRouter(prefix="/progress/module", tags=["Progress"])
 
-@router.post("/{module_id}/track")
+@router.post("/{lesson_id}/track")
 def track_progress(
-    module_id: str,
+    lesson_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    record = track_progress_service(module_id, db, current_user)
+    record = track_progress_service(lesson_id, db, current_user)
     return ProgressOut(
         user_id=record.user_id,
         lesson_id=record.lesson_id,

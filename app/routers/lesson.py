@@ -21,5 +21,9 @@ def get_lesson(lesson_id: str, db: Session = Depends(get_db)):
     return get_lesson_service(lesson_id, db)
 
 @router.get("/{lesson_id}/navigation")
-def get_lesson_navigation(lesson_id: str, db: Session = Depends(get_db)):
-    return get_next_lesson_navigation(lesson_id, db)
+def get_lesson_navigation(
+        lesson_id: str,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    return get_next_lesson_navigation(lesson_id, current_user, db)

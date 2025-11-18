@@ -59,7 +59,12 @@ def get_lessons_by_level(db: Session, current_user: User):
     if next_lesson:
         start_index = lessons.index(next_lesson)
     else:
-        start_index = 0
+        return {
+            "level": user_level,
+            "next_lesson_id": None,
+            "lessons": [],
+            "exam_available": True
+        }
 
     lessons_to_show = lessons[start_index:start_index + 3]
 
@@ -80,7 +85,10 @@ def get_lessons_by_level(db: Session, current_user: User):
     }
 
 
-def get_next_lesson_navigation(lesson_id: str, db: Session):
+def get_next_lesson_navigation(lesson_id: str, current_user: User, db: Session):
+    level_data = get_user_level(db, current_user)
+    user_level = level_data["level"]
+    start, end = LEVEL_RANGES.get(user_level, (1, 5))
     current = db.query(Lesson).filter(Lesson.id == lesson_id).first()
     if not current:
         raise HTTPException(status_code=404, detail="Lección no encontrada")
@@ -88,12 +96,17 @@ def get_next_lesson_navigation(lesson_id: str, db: Session):
     previous_lesson = (
         db.query(Lesson)
         .filter(Lesson.order_in_course < current.order_in_course)
+        .filter(Lesson.order_in_course >= start)
+        .filter(Lesson.order_in_course <= end)
         .order_by(Lesson.order_in_course.desc())
         .first()
     )
+
     next_lesson = (
         db.query(Lesson)
         .filter(Lesson.order_in_course > current.order_in_course)
+        .filter(Lesson.order_in_course >= start)
+        .filter(Lesson.order_in_course <= end)
         .order_by(Lesson.order_in_course.asc())
         .first()
     )

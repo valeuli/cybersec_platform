@@ -78,3 +78,28 @@ def get_lessons_by_level(db: Session, current_user: User):
             for l in lessons_to_show
         ]
     }
+
+
+def get_next_lesson_navigation(lesson_id: str, db: Session):
+    current = db.query(Lesson).filter(Lesson.id == lesson_id).first()
+    if not current:
+        raise HTTPException(status_code=404, detail="Lección no encontrada")
+
+    previous_lesson = (
+        db.query(Lesson)
+        .filter(Lesson.order_in_course < current.order_in_course)
+        .order_by(Lesson.order_in_course.desc())
+        .first()
+    )
+    next_lesson = (
+        db.query(Lesson)
+        .filter(Lesson.order_in_course > current.order_in_course)
+        .order_by(Lesson.order_in_course.asc())
+        .first()
+    )
+
+    return {
+        "current_lesson_id": str(current.id),
+        "previous_lesson_id": str(previous_lesson.id) if previous_lesson else None,
+        "next_lesson_id": str(next_lesson.id) if next_lesson else None
+    }

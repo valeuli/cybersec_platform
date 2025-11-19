@@ -17,6 +17,7 @@ class QuestionOut(BaseModel):
 
 class AttemptCreated(BaseModel):
     attempt_id: UUID4
+    total_questions: int
     message: str
 
 class QuizResultOut(BaseModel):

@@ -75,10 +75,10 @@ def test_all_lessons_completed(db_session, sample_user, course_and_lessons, acti
     _, lessons = course_and_lessons
     for lesson in lessons[:5]:
         db_session.add(UserProgress(user_id=sample_user.id, lesson_id=lesson.id))
-
     db_session.commit()
 
     result = get_lessons_by_level(db_session, sample_user)
 
     assert result["next_lesson_id"] is None
-    assert len(result["lessons"]) == 3
+    assert len(result["lessons"]) == 0
+    assert result["exam_available"] is True

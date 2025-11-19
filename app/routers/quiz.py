@@ -23,8 +23,19 @@ def get_quiz_question(attempt_id: str, index: int = 1, db: Session = Depends(get
     return get_question(db, attempt_id, index, current_user)
 
 @router.post("/attempts/{attempt_id}/answers")
-def submit_quiz_answer(attempt_id: str, data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return submit_answer(db, attempt_id, data.get("answer_id"), current_user)
+def submit_quiz_answer(
+    attempt_id: str,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return submit_answer(
+        db=db,
+        attempt_id=attempt_id,
+        answer_id=data.get("answer_id"),
+        index=data.get("index"),
+        current_user=current_user,
+    )
 
 @router.post("/attempts/{attempt_id}/finish", response_model=QuizResultOut)
 def finish_quiz_attempt(attempt_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

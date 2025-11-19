@@ -24,7 +24,13 @@ def start_quiz_attempt(db: Session, current_user: User):
     db.add(attempt)
     db.commit()
     db.refresh(attempt)
-    return {"attempt_id": attempt.id, "message": "Intento de examen creado."}
+    total_questions = db.query(Question).filter(Question.is_active == True).count()
+
+    return {
+        "attempt_id": attempt.id,
+        "total_questions": total_questions,
+        "message": "Intento de examen creado."
+    }
 
 
 def get_question(db: Session, attempt_id: str, index: int, current_user: User):
@@ -51,34 +57,61 @@ def get_question(db: Session, attempt_id: str, index: int, current_user: User):
     }
 
 
-def submit_answer(db: Session, attempt_id, answer_id):
+def submit_answer(db: Session, attempt_id, answer_id, index: int, current_user: User = None):
+    if not current_user:
+        raise HTTPException(status_code=403, detail="No hay usuario logueado.")
+
     try:
         attempt_uuid = UUID(str(attempt_id))
         answer_uuid = UUID(str(answer_id))
     except ValueError:
         raise HTTPException(status_code=400, detail="ID inválido")
 
-    attempt = db.query(UserExamResult).filter(UserExamResult.id == attempt_uuid).first()
+    attempt = db.query(UserExamResult).filter(
+        UserExamResult.id == attempt_uuid,
+        UserExamResult.user_id == current_user.id
+    ).first()
+
     if not attempt:
         raise HTTPException(status_code=404, detail="Intento no encontrado.")
 
     validate_attempt_time(attempt.taken_at)
+    ordered_questions = get_ordered_questions(db)
+    total_questions = len(ordered_questions)
 
+    if index < 1 or index > total_questions:
+        raise HTTPException(status_code=400, detail="Índice fuera de rango.")
+
+    current_question = ordered_questions[index - 1]
     answer = db.query(Answer).filter(Answer.id == answer_uuid).first()
-    if not answer:
-        raise HTTPException(status_code=404, detail="Respuesta no encontrada.")
+    if not answer or answer.question_id != current_question.id:
+        raise HTTPException(
+            status_code=400,
+            detail="La respuesta no pertenece a la pregunta actual."
+        )
+
+    existing_record = db.query(UserExamAnswer).filter(
+        UserExamAnswer.result_id == attempt_uuid,
+        UserExamAnswer.question_id == current_question.id
+    ).first()
+
+    if existing_record:
+        existing_record.answer_id = answer.id
+        existing_record.is_correct = bool(answer.is_correct)
+        existing_record.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        return {"message": "Respuesta actualizada."}
 
     record = UserExamAnswer(
         result_id=attempt_uuid,
-        question_id=answer.question_id,
+        question_id=current_question.id,
         answer_id=answer.id,
         is_correct=bool(answer.is_correct),
         created_at=datetime.now(timezone.utc),
     )
-
     db.add(record)
     db.commit()
-    return {"message": "Respuesta guardada exitosamente."}
+    return {"message": "Respuesta registrada."}
 
 
 def finish_quiz(db: Session, attempt_id: str, current_user: User):
@@ -90,13 +123,30 @@ def finish_quiz(db: Session, attempt_id: str, current_user: User):
         raise HTTPException(status_code=404, detail="Intento no encontrado.")
 
     validate_attempt_time(attempt.taken_at)
+    total_questions = db.query(Question).filter(Question.is_active == True).count()
+
+    answered_count = (
+        db.query(UserExamAnswer.question_id)
+        .filter(UserExamAnswer.result_id == attempt_id)
+        .distinct()
+        .count()
+    )
+    if answered_count < total_questions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Aún faltan preguntas por responder. "
+                   f"Respuestas dadas: {answered_count}/{total_questions}"
+        )
 
     result_data = calculate_level_progression(db, attempt_id)
     attempt.total_score = result_data["total_score"]
     attempt.level_assigned = result_data["level_assigned"]
     db.commit()
 
-    return {"message": "Examen finalizado.", **result_data}
+    return {
+        "message": "Examen finalizado.",
+        **result_data
+    }
 
 def calculate_level_progression(db: Session, attempt_id: str):
     answers = db.query(UserExamAnswer).filter(UserExamAnswer.result_id == attempt_id).all()
@@ -122,6 +172,12 @@ def calculate_level_progression(db: Session, attempt_id: str):
 
     total_score = score_basic + score_intermediate + score_advanced
 
+    total_correct = (
+        correct_by_level["basic"] +
+        correct_by_level["intermediate"] +
+        correct_by_level["advanced"]
+    )
+
     if total_score >= 95:
         level = "advanced"
     elif total_score >= 70:
@@ -136,7 +192,9 @@ def calculate_level_progression(db: Session, attempt_id: str):
         "score_intermediate": score_intermediate,
         "score_advanced": score_advanced,
         "total_score": total_score,
+        "total_correct": total_correct,
         "level_assigned": level,
+        "score": total_score,
     }
 
 def get_user_level(db: Session, current_user: User):
@@ -151,3 +209,8 @@ def get_user_level(db: Session, current_user: User):
         return {"level": "basic"}
 
     return {"level": last_result.level_assigned}
+
+def get_ordered_questions(db: Session):
+    return db.query(Question).filter(
+        Question.is_active == True
+    ).order_by(Question.created_at).all()

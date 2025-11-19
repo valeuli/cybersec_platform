@@ -100,8 +100,9 @@ def test_finish_quiz_success(db_session, sample_user, active_exam, basic_questio
 
     res = finish_quiz(db_session, attempt.id, sample_user)
     assert "message" in res
-    assert "total_score" in res
+    assert "score" in res
     assert "level_assigned" in res
+    assert "total_correct" in res
 
 
 def test_validate_attempt_time_expired():

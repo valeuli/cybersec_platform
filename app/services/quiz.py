@@ -145,7 +145,9 @@ def finish_quiz(db: Session, attempt_id: str, current_user: User):
 
     return {
         "message": "Examen finalizado.",
-        **result_data
+        "total_correct": result_data["total_correct"],
+        "score": result_data["score"],
+        "level_assigned": result_data["level_assigned"]
     }
 
 def calculate_level_progression(db: Session, attempt_id: str):
